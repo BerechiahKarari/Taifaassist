@@ -168,9 +168,9 @@ app.get('/api/health', (req, res) => {
 });
 
 // Serve React app for all non-API routes in production
-// This MUST be the last route defined
+// This MUST be the last middleware defined
 if (process.env.NODE_ENV === 'production') {
-  app.get('/*', (req, res) => {
+  app.use((req, res) => {
     res.sendFile(path.join(__dirname, '../dist/index.html'), (err) => {
       if (err) {
         console.error('Error sending file:', err);
