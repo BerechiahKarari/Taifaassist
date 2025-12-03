@@ -165,9 +165,13 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Serve React app for all other routes in production
+// Serve React app for all non-API routes in production
 if (process.env.NODE_ENV === 'production') {
   app.get('*', (req, res) => {
+    // Don't serve index.html for API routes
+    if (req.path.startsWith('/api')) {
+      return res.status(404).json({ error: 'API endpoint not found' });
+    }
     res.sendFile(path.join(__dirname, '../dist/index.html'));
   });
 }
