@@ -18,6 +18,10 @@
   ],
   "author": "",
   "license": "ISC",
+  "engines": {
+    "node": ">=20.19.0",
+    "npm": ">=10.0.0"
+  },
   "dependencies": {
     "cors": "^2.8.5",
     "dompurify": "^3.3.0",
