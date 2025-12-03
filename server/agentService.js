@@ -6,7 +6,27 @@ export class AgentService {
       { id: 1, name: 'Elizabeth Mafi', status: 'available', language: ['en', 'sw', 'sh'] },
       { id: 2, name: 'Kim Ted', status: 'available', language: ['en', 'sw', 'sh'] },
       { id: 3, name: 'Grace Nyaguthii', status: 'available', language: ['en', 'sw', 'sh'] },
+      { id: 4, name: 'John Kamau', status: 'available', language: ['en', 'sw', 'sh'] },
+      { id: 5, name: 'Mary Wanjiku', status: 'available', language: ['en', 'sw', 'sh'] },
+      { id: 6, name: 'David Omondi', status: 'available', language: ['en', 'sw', 'sh'] },
+      { id: 7, name: 'Sarah Akinyi', status: 'available', language: ['en', 'sw', 'sh'] },
+      { id: 8, name: 'Peter Mwangi', status: 'available', language: ['en', 'sw', 'sh'] },
     ];
+    
+    // Auto-cleanup stale sessions every 5 minutes
+    setInterval(() => this.cleanupStaleSessions(), 5 * 60 * 1000);
+  }
+  
+  cleanupStaleSessions() {
+    const now = Date.now();
+    const maxSessionAge = 30 * 60 * 1000; // 30 minutes
+    
+    for (const [sessionId, session] of this.sessions.entries()) {
+      if (now - session.startTime.getTime() > maxSessionAge) {
+        console.log(`Cleaning up stale session: ${sessionId}`);
+        this.endSession(sessionId);
+      }
+    }
   }
 
   findAvailableAgent(language) {
