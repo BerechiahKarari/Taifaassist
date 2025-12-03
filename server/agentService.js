@@ -2,6 +2,8 @@
 export class AgentService {
   constructor() {
     this.sessions = new Map();
+    this.userAgentHistory = new Map(); // Track which agents users have talked to
+    this.lastAssignedIndex = 0; // Round-robin assignment
     this.agents = [
       { id: 1, name: 'Elizabeth Mafi', status: 'available', language: ['en', 'sw', 'sh'] },
       { id: 2, name: 'Kim Ted', status: 'available', language: ['en', 'sw', 'sh'] },
@@ -29,18 +31,41 @@ export class AgentService {
     }
   }
 
-  findAvailableAgent(language) {
-    return this.agents.find(agent => 
+  findAvailableAgent(language, userId) {
+    // Get list of agents this user has already talked to
+    const userHistory = this.userAgentHistory.get(userId) || [];
+    
+    // Filter available agents that support the language
+    const availableAgents = this.agents.filter(agent => 
       agent.status === 'available' && agent.language.includes(language)
     );
+    
+    if (availableAgents.length === 0) return null;
+    
+    // Try to find an agent the user hasn't talked to yet
+    let newAgent = availableAgents.find(agent => !userHistory.includes(agent.id));
+    
+    // If user has talked to all agents, reset their history and use round-robin
+    if (!newAgent) {
+      this.userAgentHistory.set(userId, []);
+      this.lastAssignedIndex = (this.lastAssignedIndex + 1) % availableAgents.length;
+      newAgent = availableAgents[this.lastAssignedIndex];
+    }
+    
+    return newAgent;
   }
 
   createSession(userId, language) {
-    const agent = this.findAvailableAgent(language);
+    const agent = this.findAvailableAgent(language, userId);
     if (!agent) return null;
 
     const sessionId = `session_${Date.now()}`;
     agent.status = 'busy';
+    
+    // Track that this user talked to this agent
+    const userHistory = this.userAgentHistory.get(userId) || [];
+    userHistory.push(agent.id);
+    this.userAgentHistory.set(userId, userHistory);
     
     this.sessions.set(sessionId, {
       userId,
