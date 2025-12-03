@@ -18,7 +18,9 @@ app.use(express.json());
 
 // Serve static files from the dist directory in production
 if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../dist')));
+  const distPath = path.join(__dirname, '../dist');
+  app.use(express.static(distPath));
+  console.log(`📁 Serving static files from: ${distPath}`);
 }
 
 // Simple AI response logic
@@ -166,17 +168,20 @@ app.get('/api/health', (req, res) => {
 });
 
 // Serve React app for all non-API routes in production
+// This MUST be the last route defined
 if (process.env.NODE_ENV === 'production') {
-  app.get('*', (req, res) => {
-    // Don't serve index.html for API routes
-    if (req.path.startsWith('/api')) {
-      return res.status(404).json({ error: 'API endpoint not found' });
-    }
-    res.sendFile(path.join(__dirname, '../dist/index.html'));
+  app.get('/*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../dist/index.html'), (err) => {
+      if (err) {
+        console.error('Error sending file:', err);
+        res.status(500).send('Error loading application');
+      }
+    });
   });
 }
 
 app.listen(PORT, () => {
   console.log(`🚀 TaifaAssist Backend running on http://localhost:${PORT}`);
   console.log(`📞 Live Agent Service: ${agentService.agents.length} agents available`);
+  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
