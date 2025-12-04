@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { agentService } from './agentService.js';
+import { db } from './database.js';
 
 dotenv.config();
 
@@ -165,6 +166,167 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString(),
     availableAgents: agentService.agents.filter(a => a.status === 'available').length
   });
+});
+
+// User Management
+app.post('/api/users/register', (req, res) => {
+  try {
+    const { email, name, phone, language } = req.body;
+    
+    if (!email || !name) {
+      return res.status(400).json({ error: 'Email and name are required' });
+    }
+    
+    const user = db.createUser({ email, name, phone, language });
+    res.json({ success: true, user });
+  } catch (error) {
+    console.error('Registration error:', error);
+    res.status(500).json({ error: 'Failed to register user' });
+  }
+});
+
+app.get('/api/users/:userId', (req, res) => {
+  try {
+    const user = db.getUser(req.params.userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.json(user);
+  } catch (error) {
+    console.error('Get user error:', error);
+    res.status(500).json({ error: 'Failed to get user' });
+  }
+});
+
+// Chat History
+app.get('/api/chat/history/:userId', (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 50;
+    const history = db.getChatHistory(req.params.userId, limit);
+    res.json({ history });
+  } catch (error) {
+    console.error('Get history error:', error);
+    res.status(500).json({ error: 'Failed to get chat history' });
+  }
+});
+
+app.get('/api/chat/search/:userId', (req, res) => {
+  try {
+    const query = req.query.q;
+    if (!query) {
+      return res.status(400).json({ error: 'Search query required' });
+    }
+    const results = db.searchChats(req.params.userId, query);
+    res.json({ results });
+  } catch (error) {
+    console.error('Search error:', error);
+    res.status(500).json({ error: 'Failed to search chats' });
+  }
+});
+
+app.post('/api/chat/export/:userId', (req, res) => {
+  try {
+    const history = db.getChatHistory(req.params.userId, 1000);
+    const text = history.map(msg => 
+      `[${msg.timestamp}] ${msg.sender}: ${msg.text}`
+    ).join('\n');
+    
+    res.setHeader('Content-Type', 'text/plain');
+    res.setHeader('Content-Disposition', 'attachment; filename="chat-history.txt"');
+    res.send(text);
+  } catch (error) {
+    console.error('Export error:', error);
+    res.status(500).json({ error: 'Failed to export chat' });
+  }
+});
+
+// Ratings
+app.post('/api/ratings', (req, res) => {
+  try {
+    const rating = db.saveRating(req.body);
+    res.json({ success: true, rating });
+  } catch (error) {
+    console.error('Rating error:', error);
+    res.status(500).json({ error: 'Failed to save rating' });
+  }
+});
+
+// Appointments
+app.post('/api/appointments', (req, res) => {
+  try {
+    const appointment = db.createAppointment(req.body);
+    res.json({ success: true, appointment });
+  } catch (error) {
+    console.error('Appointment error:', error);
+    res.status(500).json({ error: 'Failed to create appointment' });
+  }
+});
+
+app.get('/api/appointments/:userId', (req, res) => {
+  try {
+    const appointments = db.getUserAppointments(req.params.userId);
+    res.json({ appointments });
+  } catch (error) {
+    console.error('Get appointments error:', error);
+    res.status(500).json({ error: 'Failed to get appointments' });
+  }
+});
+
+// File Upload (basic - will enhance with multer later)
+app.post('/api/upload', (req, res) => {
+  try {
+    const { userId, fileName, fileType, fileData } = req.body;
+    
+    if (!userId || !fileName || !fileData) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+    
+    const upload = db.saveUpload({
+      userId,
+      fileName,
+      fileType,
+      size: fileData.length,
+      data: fileData
+    });
+    
+    res.json({ success: true, upload: { id: upload.id, fileName: upload.fileName } });
+  } catch (error) {
+    console.error('Upload error:', error);
+    res.status(500).json({ error: 'Failed to upload file' });
+  }
+});
+
+app.get('/api/uploads/:userId', (req, res) => {
+  try {
+    const uploads = db.getUserUploads(req.params.userId);
+    res.json({ uploads: uploads.map(u => ({ id: u.id, fileName: u.fileName, uploadedAt: u.uploadedAt })) });
+  } catch (error) {
+    console.error('Get uploads error:', error);
+    res.status(500).json({ error: 'Failed to get uploads' });
+  }
+});
+
+// Analytics (Admin)
+app.get('/api/admin/analytics', (req, res) => {
+  try {
+    const analytics = db.getAnalytics();
+    res.json(analytics);
+  } catch (error) {
+    console.error('Analytics error:', error);
+    res.status(500).json({ error: 'Failed to get analytics' });
+  }
+});
+
+// Service Status
+app.get('/api/services/status', (req, res) => {
+  const services = [
+    { name: 'eCitizen', status: 'online', url: 'https://ecitizen.go.ke' },
+    { name: 'KRA iTax', status: 'online', url: 'https://itax.kra.go.ke' },
+    { name: 'NHIF', status: 'online', url: 'https://selfcare.nhif.or.ke' },
+    { name: 'Immigration', status: 'online', url: 'https://immigration.go.ke' },
+    { name: 'NTSA', status: 'online', url: 'https://tims.ntsa.go.ke' }
+  ];
+  res.json({ services, lastChecked: new Date().toISOString() });
 });
 
 // Serve React app for all non-API routes in production
