@@ -13,6 +13,12 @@ import { LiveAgentPanel } from './components/LiveAgentPanel';
 import { TypingIndicator } from './components/TypingIndicator';
 import { QuickReplies } from './components/QuickReplies';
 import { ChatRating } from './components/ChatRating';
+import { AuthModal } from './components/AuthModal';
+import { FileUpload } from './components/FileUpload';
+import { ServiceStatus } from './components/ServiceStatus';
+import { AdminDashboard } from './components/AdminDashboard';
+import { soundManager } from './utils/sounds';
+import { notificationManager } from './utils/notifications';
 
 function App() {
   const [language, setLanguage] = useState("en");
@@ -28,6 +34,13 @@ function App() {
   const [isTyping, setIsTyping] = useState(false);
   const [showRating, setShowRating] = useState(false);
   const [showQuickReplies, setShowQuickReplies] = useState(true);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showFileUpload, setShowFileUpload] = useState(false);
+  const [showServiceStatus, setShowServiceStatus] = useState(false);
+  const [showAdminDashboard, setShowAdminDashboard] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   
   const chatEndRef = useRef(null);
   const { listening, start: startVoice, stop: stopVoice } = useVoiceRecognition();
@@ -44,6 +57,23 @@ function App() {
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    // Request notification permission on load
+    if (notificationsEnabled) {
+      notificationManager.requestPermission();
+    }
+    
+    // Load user from localStorage
+    const savedUser = localStorage.getItem('taifaassist_user');
+    if (savedUser) {
+      setCurrentUser(JSON.parse(savedUser));
+    }
+  }, []);
+
+  useEffect(() => {
+    soundManager.setEnabled(soundEnabled);
+  }, [soundEnabled]);
 
   const addNotification = (type, message) => {
     const id = Date.now();
@@ -86,6 +116,17 @@ function App() {
         };
         setMessages(prev => [...prev, agentMsg]);
         addNotification('success', language === 'sw' ? `Umeunganishwa na ${data.agentName}` : `Connected to ${data.agentName}`);
+        
+        // Play sound and show notification
+        soundManager.playAgentConnected();
+        if (notificationsEnabled) {
+          notificationManager.showAgentConnectedNotification(data.agentName, language);
+        }
+      } else if (data.queued) {
+        addNotification('info', language === 'sw' ? `Upo kwenye foleni. Nafasi: ${data.position}` : `You are in queue. Position: ${data.position}`);
+        if (notificationsEnabled) {
+          notificationManager.showQueueNotification(data.position, language);
+        }
       } else {
         throw new Error(data.error);
       }
@@ -130,7 +171,7 @@ function App() {
   };
 
   const sendMessage = async (messageText) => {
-    const textToSend = messageText || query;
+    const textToSend = String(messageText || query || '');
     if (!textToSend.trim()) return;
     const sanitizedQuery = DOMPurify.sanitize(textToSend);
     const newMessage = { 
