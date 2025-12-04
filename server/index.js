@@ -5,6 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { agentService } from './agentService.js';
 import { db } from './database.js';
+import { rateLimiter } from './rateLimiter.js';
 
 dotenv.config();
 
@@ -81,8 +82,8 @@ const getAIResponse = (message, language) => {
   };
 };
 
-// Chat endpoint
-app.post('/api/chat', (req, res) => {
+// Chat endpoint (with rate limiting)
+app.post('/api/chat', rateLimiter.middleware('chat'), (req, res) => {
   try {
     const { message, language = 'en' } = req.body;
     
@@ -103,8 +104,8 @@ app.post('/api/chat', (req, res) => {
   }
 });
 
-// Live agent endpoints
-app.post('/api/agent/connect', (req, res) => {
+// Live agent endpoints (with rate limiting)
+app.post('/api/agent/connect', rateLimiter.middleware('agent'), (req, res) => {
   try {
     const { userId, language = 'en' } = req.body;
     const session = agentService.createSession(userId || `user_${Date.now()}`, language);
@@ -272,8 +273,8 @@ app.get('/api/appointments/:userId', (req, res) => {
   }
 });
 
-// File Upload (basic - will enhance with multer later)
-app.post('/api/upload', (req, res) => {
+// File Upload (basic - will enhance with multer later) (with rate limiting)
+app.post('/api/upload', rateLimiter.middleware('upload'), (req, res) => {
   try {
     const { userId, fileName, fileType, fileData } = req.body;
     
