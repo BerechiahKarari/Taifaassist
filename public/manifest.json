@@ -7,14 +7,7 @@
   "background_color": "#ffffff",
   "theme_color": "#16a34a",
   "orientation": "portrait-primary",
-  "icons": [
-    {
-      "src": "/vite.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
-    }
-  ],
+  "icons": [],
   "categories": ["government", "productivity", "utilities"],
   "lang": "en-KE",
   "dir": "ltr",
