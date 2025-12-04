@@ -20,6 +20,11 @@ self.addEventListener('install', (event) => {
 
 // Fetch event - serve from cache, fallback to network
 self.addEventListener('fetch', (event) => {
+  // Only cache GET requests
+  if (event.request.method !== 'GET') {
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
@@ -73,8 +78,8 @@ self.addEventListener('push', (event) => {
   const title = data.title || 'TaifaAssist';
   const options = {
     body: data.body || 'New message',
-    icon: '/icon-192.png',
-    badge: '/icon-192.png',
+    icon: '/vite.svg',
+    badge: '/vite.svg',
     vibrate: [200, 100, 200],
     data: data.url || '/'
   };
