@@ -129,9 +129,10 @@ function App() {
     setTimeout(() => setShowRating(false), 3000);
   };
 
-  const sendMessage = async (messageText = query) => {
-    if (!messageText.trim()) return;
-    const sanitizedQuery = DOMPurify.sanitize(messageText);
+  const sendMessage = async (messageText) => {
+    const textToSend = messageText || query;
+    if (!textToSend.trim()) return;
+    const sanitizedQuery = DOMPurify.sanitize(textToSend);
     const newMessage = { 
       id: Date.now(), 
       text: sanitizedQuery, 
