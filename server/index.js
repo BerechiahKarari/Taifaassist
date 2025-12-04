@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import { agentService } from './agentService.js';
 import { db } from './database.js';
 import { rateLimiter } from './rateLimiter.js';
+import { aiService } from './aiService.js';
 
 dotenv.config();
 
@@ -82,21 +83,39 @@ const getAIResponse = (message, language) => {
   };
 };
 
-// Chat endpoint (with rate limiting)
-app.post('/api/chat', rateLimiter.middleware('chat'), (req, res) => {
+// Chat endpoint (with rate limiting and AI)
+app.post('/api/chat', rateLimiter.middleware('chat'), async (req, res) => {
   try {
-    const { message, language = 'en' } = req.body;
+    const { message, language = 'en', userId } = req.body;
     
     if (!message) {
       return res.status(400).json({ error: 'Message is required' });
     }
     
-    const aiResponse = getAIResponse(message, language);
+    // Use AI service for intelligent responses
+    const aiResponse = await aiService.generateResponse(message, language, { userId });
     
-    // Simulate processing delay
-    setTimeout(() => {
-      res.json(aiResponse);
-    }, 500);
+    // Track service usage for analytics
+    const services = ['passport', 'kra', 'nhif', 'id', 'license', 'business'];
+    services.forEach(service => {
+      if (message.toLowerCase().includes(service)) {
+        db.trackServiceUsage(service);
+      }
+    });
+    
+    // Save to chat history if user is logged in
+    if (userId) {
+      db.saveChatMessage(userId, 'ai_session', {
+        text: message,
+        sender: 'user'
+      });
+      db.saveChatMessage(userId, 'ai_session', {
+        text: aiResponse.response,
+        sender: 'assistant'
+      });
+    }
+    
+    res.json(aiResponse);
     
   } catch (error) {
     console.error('Error processing chat:', error);
