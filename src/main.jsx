@@ -365,13 +365,27 @@ function App() {
 
       <footer className="p-4 bg-white dark:bg-gray-800 border-t dark:border-gray-700">
         <div className="max-w-4xl mx-auto flex items-center gap-2 bg-gray-100 dark:bg-gray-900 rounded-full px-4 py-3">
-          <input value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && sendMessage()} placeholder={showLiveAgent ? (language === 'sw' ? 'Tuma ujumbe kwa msaidizi...' : 'Message live agent...') : t.searchPlaceholder} className="flex-1 bg-transparent focus:outline-none text-gray-700 dark:text-gray-200 placeholder-gray-500" />
+          <input 
+            value={query} 
+            onChange={(e) => setQuery(e.target.value)} 
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && query && query.trim()) {
+                sendMessage();
+              }
+            }} 
+            placeholder={showLiveAgent ? (language === 'sw' ? 'Tuma ujumbe kwa msaidizi...' : 'Message live agent...') : t.searchPlaceholder} 
+            className="flex-1 bg-transparent focus:outline-none text-gray-700 dark:text-gray-200 placeholder-gray-500" 
+          />
           {listening ? (
             <button onClick={stopVoice} className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-full"><MicOff className="w-5 h-5 text-red-500" /></button>
           ) : (
             <button onClick={handleVoiceStart} className="p-2 hover:bg-gray-200 dark:hover:bg-gray-800 rounded-full"><Mic className="w-5 h-5 text-gray-500 dark:text-gray-400" /></button>
           )}
-          <button onClick={sendMessage} disabled={!query.trim() || isLoading} className="p-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 rounded-full">
+          <button 
+            onClick={() => sendMessage()} 
+            disabled={!query || !String(query).trim() || isLoading} 
+            className="p-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 rounded-full"
+          >
             <Send className="w-5 h-5 text-white" />
           </button>
         </div>
