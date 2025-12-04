@@ -10,6 +10,9 @@ import { ServiceCard } from './components/ServiceCard';
 import { SkeletonLoader } from './components/SkeletonLoader';
 import { Notification } from './components/Notification';
 import { LiveAgentPanel } from './components/LiveAgentPanel';
+import { TypingIndicator } from './components/TypingIndicator';
+import { QuickReplies } from './components/QuickReplies';
+import { ChatRating } from './components/ChatRating';
 
 function App() {
   const [language, setLanguage] = useState("en");
@@ -22,6 +25,9 @@ function App() {
   const [agentStatus, setAgentStatus] = useState("offline");
   const [agentName, setAgentName] = useState("");
   const [agentSessionId, setAgentSessionId] = useState(null);
+  const [isTyping, setIsTyping] = useState(false);
+  const [showRating, setShowRating] = useState(false);
+  const [showQuickReplies, setShowQuickReplies] = useState(true);
   
   const chatEndRef = useRef(null);
   const { listening, start: startVoice, stop: stopVoice } = useVoiceRecognition();
@@ -105,6 +111,7 @@ function App() {
     setShowLiveAgent(false);
     setAgentStatus("offline");
     setAgentSessionId(null);
+    setShowRating(true);
     
     const disconnectMsg = {
       id: Date.now(),
@@ -116,9 +123,15 @@ function App() {
     addNotification('info', language === 'sw' ? 'Mazungumzo yameisha' : 'Chat ended');
   };
 
-  const sendMessage = async () => {
-    if (!query.trim()) return;
-    const sanitizedQuery = DOMPurify.sanitize(query);
+  const handleRatingSubmit = (ratingData) => {
+    console.log('Rating submitted:', ratingData);
+    addNotification('success', language === 'sw' ? 'Asante kwa maoni yako!' : 'Thank you for your feedback!');
+    setTimeout(() => setShowRating(false), 3000);
+  };
+
+  const sendMessage = async (messageText = query) => {
+    if (!messageText.trim()) return;
+    const sanitizedQuery = DOMPurify.sanitize(messageText);
     const newMessage = { 
       id: Date.now(), 
       text: sanitizedQuery, 
@@ -127,23 +140,32 @@ function App() {
     };
     setMessages([...messages, newMessage]);
     setQuery("");
+    setShowQuickReplies(false);
     setIsLoading(true);
+    setIsTyping(true);
 
+    // Simulate typing delay
+    const typingDelay = showLiveAgent ? 1000 + Math.random() * 2000 : 500;
+    
     try {
       if (showLiveAgent && agentSessionId) {
-        const response = await fetch('/api/agent/message', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sessionId: agentSessionId, message: sanitizedQuery }),
-        });
-        const data = await response.json();
-        const responseMsg = { 
-          id: Date.now() + 1, 
-          text: data.response, 
-          sender: "agent", 
-          timestamp: new Date().toLocaleTimeString() 
-        };
-        setMessages(prev => [...prev, responseMsg]);
+        setTimeout(async () => {
+          const response = await fetch('/api/agent/message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessionId: agentSessionId, message: sanitizedQuery }),
+          });
+          const data = await response.json();
+          setIsTyping(false);
+          const responseMsg = { 
+            id: Date.now() + 1, 
+            text: data.response, 
+            sender: "agent", 
+            timestamp: new Date().toLocaleTimeString() 
+          };
+          setMessages(prev => [...prev, responseMsg]);
+          setIsLoading(false);
+        }, typingDelay);
       } else {
         const response = await fetch('/api/chat', {
           method: 'POST',
@@ -151,6 +173,7 @@ function App() {
           body: JSON.stringify({ message: sanitizedQuery, language }),
         });
         const data = await response.json();
+        setIsTyping(false);
         const responseMsg = { 
           id: Date.now() + 1, 
           text: data.response, 
@@ -159,8 +182,10 @@ function App() {
           showLiveAgentButton: data.suggestLiveAgent
         };
         setMessages(prev => [...prev, responseMsg]);
+        setIsLoading(false);
       }
     } catch (error) {
+      setIsTyping(false);
       const fallbackResponse = { 
         id: Date.now() + 1, 
         text: t.defaultResponse(sanitizedQuery), 
@@ -168,8 +193,8 @@ function App() {
         timestamp: new Date().toLocaleTimeString() 
       };
       setMessages(prev => [...prev, fallbackResponse]);
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   return (
@@ -255,6 +280,10 @@ function App() {
           </div>
         ) : (
           <div className="space-y-4 max-w-4xl mx-auto">
+            {messages.length > 0 && showQuickReplies && (
+              <QuickReplies onSelect={(query) => sendMessage(query)} language={language} />
+            )}
+            
             {messages.map((msg) => (
               <div key={msg.id}>
                 <div className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}>
@@ -284,7 +313,16 @@ function App() {
                 )}
               </div>
             ))}
-            {isLoading && <SkeletonLoader />}
+            
+            {isTyping && <TypingIndicator agentName={showLiveAgent ? agentName : null} />}
+            {isLoading && !isTyping && <SkeletonLoader />}
+            
+            {showRating && (
+              <div className="mt-4">
+                <ChatRating onSubmit={handleRatingSubmit} language={language} />
+              </div>
+            )}
+            
             <div ref={chatEndRef} />
           </div>
         )}
@@ -292,7 +330,7 @@ function App() {
 
       <footer className="p-4 bg-white dark:bg-gray-800 border-t dark:border-gray-700">
         <div className="max-w-4xl mx-auto flex items-center gap-2 bg-gray-100 dark:bg-gray-900 rounded-full px-4 py-3">
-          <input value={query} onChange={(e) => setQuery(e.target.value)} onKeyPress={(e) => e.key === "Enter" && sendMessage()} placeholder={showLiveAgent ? (language === 'sw' ? 'Tuma ujumbe kwa msaidizi...' : 'Message live agent...') : t.searchPlaceholder} className="flex-1 bg-transparent focus:outline-none text-gray-700 dark:text-gray-200 placeholder-gray-500" />
+          <input value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && sendMessage()} placeholder={showLiveAgent ? (language === 'sw' ? 'Tuma ujumbe kwa msaidizi...' : 'Message live agent...') : t.searchPlaceholder} className="flex-1 bg-transparent focus:outline-none text-gray-700 dark:text-gray-200 placeholder-gray-500" />
           {listening ? (
             <button onClick={stopVoice} className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-full"><MicOff className="w-5 h-5 text-red-500" /></button>
           ) : (

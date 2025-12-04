@@ -3,16 +3,33 @@ import { User, X, Phone, MessageCircle } from 'lucide-react';
 export function LiveAgentPanel({ agentName, agentStatus, onDisconnect, language }) {
   const isConnected = agentStatus === 'online';
   
+  // Generate avatar based on agent name
+  const getAvatarColor = (name) => {
+    const colors = [
+      'bg-gradient-to-br from-blue-400 to-blue-600',
+      'bg-gradient-to-br from-purple-400 to-purple-600',
+      'bg-gradient-to-br from-pink-400 to-pink-600',
+      'bg-gradient-to-br from-orange-400 to-orange-600',
+      'bg-gradient-to-br from-teal-400 to-teal-600',
+    ];
+    const index = name.charCodeAt(0) % colors.length;
+    return colors[index];
+  };
+  
+  const getInitials = (name) => {
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  };
+  
   return (
     <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-4 rounded-lg shadow-lg mb-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="relative">
-            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center">
-              <User className="w-6 h-6 text-green-600" />
+            <div className={`w-12 h-12 ${getAvatarColor(agentName)} rounded-full flex items-center justify-center text-white font-bold shadow-lg`}>
+              {getInitials(agentName)}
             </div>
             {isConnected && (
-              <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-300 rounded-full border-2 border-white"></div>
+              <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-300 rounded-full border-2 border-white animate-pulse"></div>
             )}
           </div>
           <div>
