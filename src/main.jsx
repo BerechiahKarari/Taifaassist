@@ -138,34 +138,28 @@ function App() {
       sender: "user", 
       timestamp: new Date().toLocaleTimeString() 
     };
-    setMessages([...messages, newMessage]);
+    setMessages(prev => [...prev, newMessage]);
     setQuery("");
     setShowQuickReplies(false);
     setIsLoading(true);
     setIsTyping(true);
-
-    // Simulate typing delay
-    const typingDelay = showLiveAgent ? 1000 + Math.random() * 2000 : 500;
     
     try {
       if (showLiveAgent && agentSessionId) {
-        setTimeout(async () => {
-          const response = await fetch('/api/agent/message', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sessionId: agentSessionId, message: sanitizedQuery }),
-          });
-          const data = await response.json();
-          setIsTyping(false);
-          const responseMsg = { 
-            id: Date.now() + 1, 
-            text: data.response, 
-            sender: "agent", 
-            timestamp: new Date().toLocaleTimeString() 
-          };
-          setMessages(prev => [...prev, responseMsg]);
-          setIsLoading(false);
-        }, typingDelay);
+        const response = await fetch('/api/agent/message', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId: agentSessionId, message: sanitizedQuery }),
+        });
+        const data = await response.json();
+        setIsTyping(false);
+        const responseMsg = { 
+          id: Date.now() + 1, 
+          text: data.response, 
+          sender: "agent", 
+          timestamp: new Date().toLocaleTimeString() 
+        };
+        setMessages(prev => [...prev, responseMsg]);
       } else {
         const response = await fetch('/api/chat', {
           method: 'POST',
@@ -182,7 +176,6 @@ function App() {
           showLiveAgentButton: data.suggestLiveAgent
         };
         setMessages(prev => [...prev, responseMsg]);
-        setIsLoading(false);
       }
     } catch (error) {
       setIsTyping(false);
@@ -193,8 +186,8 @@ function App() {
         timestamp: new Date().toLocaleTimeString() 
       };
       setMessages(prev => [...prev, fallbackResponse]);
-      setIsLoading(false);
     }
+    setIsLoading(false);
   };
 
   return (
