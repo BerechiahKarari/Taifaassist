@@ -333,7 +333,13 @@ app.get('/api/services/status', (req, res) => {
 // Serve React app for all non-API routes in production
 // This MUST be the last middleware defined
 if (process.env.NODE_ENV === 'production') {
-  app.use((req, res) => {
+  app.use((req, res, next) => {
+    // Don't serve index.html for API routes or static assets
+    if (req.path.startsWith('/api') || 
+        req.path.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|json|woff|woff2|ttf|eot)$/)) {
+      return next();
+    }
+    
     res.sendFile(path.join(__dirname, '../dist/index.html'), (err) => {
       if (err) {
         console.error('Error sending file:', err);
